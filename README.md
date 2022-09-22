@@ -111,3 +111,50 @@ sudo python3 pygame-display-test.py
 ```
 
 You should see "PyGame Draw Test" printed on the screen.
+
+#### Edge Impulse Setup
+
+Install dependencies:
+
+```
+sudo apt-get install libatlas-base-dev libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev gcc g++ make build-essential nodejs sox gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps
+pip3 install edge_impulse_linux -i https://pypi.python.org/simple
+```
+
+Install node.js:
+
+```
+curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v
+```
+
+Verify node installation directory:
+
+```
+npm config get prefix
+```
+
+If it returns */usr/local/*, run the following commands to change npm's default directory:
+
+```
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile
+```
+
+Install CLI tools:
+
+```
+npm config set user root && sudo npm install edge-impulse-linux -g --unsafe-perm
+```
+
+Download model file. Sign in with your Edge Impulse credentials when prompted. Select the **MobileNet-SSD: Face Detection 320x320 RGB** project.
+
+```
+cd ~/Projects/HyperPixel/
+edge-impulse-linux-runner --clean --download mobilenet-ssd-face.eim
+```
+
+Copy *tests/ei-face-static-test.py* and *tests/static-features.txt* to the *~/Projects/HyperPixel/* directory.
+
