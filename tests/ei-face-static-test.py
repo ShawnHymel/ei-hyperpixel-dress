@@ -1,3 +1,9 @@
+"""
+https://github.com/edgeimpulse/linux-sdk-python/blob/master/examples/image/classify-image.py
+
+License: Apache-2.0
+"""
+
 import os
 import sys, getopt
 import signal

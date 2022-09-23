@@ -2,6 +2,66 @@
 
 ## Setup Notes
 
+### Raspberry Pi Zero W
+
+#### Hardware
+
+* Connect Pi Camera to Raspberry Pi 4
+* Connect HyperPixel to Raspberry pi 4
+
+#### Operating System Setup
+
+* Download the [Raspberry Pi Image](https://www.raspberrypi.com/software/)
+* Burn Raspberri Pi OS Lite (Legacy) (Buster) to a micro SD card
+* Connect keyboard, mouse, and monitor (e.g. HDMI)
+  * Adjust *boot/config.txt* as needed to support your monitor
+  * Note: if you do not have a keyboard, mouse, and monitor, you can do an [Ethernet headless setup](https://nrsyed.com/2021/06/02/raspberry-pi-headless-setup-via-ethernet-and-how-to-share-the-host-pcs-internet-connection/)
+* Login with default username (pi) and password (raspberry)
+* Run config:
+
+```
+sudo raspi-config
+```
+
+* Configure the following:
+  * Connect to WiFi (can disable WiFi after we install everything)
+  * Change password (recommended)
+  * Enable camera interface (if using Pi Cam)
+  * Enable SSH
+  * Enable I2C
+  * Localization: 
+    * Remove en_GB.UTF-8 and add en_US.UTF-8
+    * Set default to en_US.UTF-8
+  * Set timezone
+  * Set keyboard to Generic 105-key, English (US)
+  * Set Wireless LAN country to US
+  * Save and reboot
+
+#### Enable USB Ethernet Gadget
+
+Modify config.txt:
+
+```
+sudo nano /boot/config.txt
+```
+
+Add the following at the bottom:
+
+```
+# Enable USB gadget
+dtoverlay=dwc2
+```
+
+Save and exit. Modify cmdline.txt:
+
+```
+sudo nano /boot/cmdline.txt
+```
+
+
+
+
+
 ### Raspberry Pi 4
 
 #### Hardware
@@ -114,11 +174,12 @@ You should see "PyGame Draw Test" printed on the screen.
 
 #### Edge Impulse Setup
 
-Install dependencies:
+Install dependencies (we need the Edge Impulse tools to be in sudo):
 
 ```
-sudo apt-get install libatlas-base-dev libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev gcc g++ make build-essential nodejs sox gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps
-pip3 install edge_impulse_linux -i https://pypi.python.org/simple
+sudo apt install -y libatlas-base-dev libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev gcc g++ make build-essential nodejs sox gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps python-pyaudio libopenjp2-7 python-opencv python3-picamera
+sudo python3 -m pip install pyaudio
+sudo python3 -m pip install edge_impulse_linux -i https://pypi.python.org/simple
 ```
 
 Install node.js:
@@ -149,12 +210,25 @@ Install CLI tools:
 npm config set user root && sudo npm install edge-impulse-linux -g --unsafe-perm
 ```
 
+#### Test face detection with static inference
+
 Download model file. Sign in with your Edge Impulse credentials when prompted. Select the **MobileNet-SSD: Face Detection 320x320 RGB** project.
 
 ```
 cd ~/Projects/HyperPixel/
-edge-impulse-linux-runner --clean --download mobilenet-ssd-face.eim
+sudo edge-impulse-linux-runner --clean --download mobilenet-ssd-face.eim
 ```
 
-Copy *tests/ei-face-static-test.py* and *tests/static-features.txt* to the *~/Projects/HyperPixel/* directory.
+Copy *tests/ei-face-static-test.py* and *tests/static-features.txt* to the *~/Projects/HyperPixel/* directory:
+
+```
+wget https://raw.githubusercontent.com/ShawnHymel/ei-hyperpixel-dress/main/tests/ei-face-static-test.py
+wget https://raw.githubusercontent.com/ShawnHymel/ei-hyperpixel-dress/main/tests/static-features.txt
+```
+
+Run the test with:
+
+```
+sudo python3 ei-face-static-test.py mobilenet-ssd-face.eim static-features.txt
+```
 
