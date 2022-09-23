@@ -88,8 +88,14 @@ static routers=192.168.7.1
 static domain_name_servers=192.168.7.1
 ```
 
+#### Install OpenCV
 
+Run the following:
 
+```
+sudo apt update
+sudo apt install -y python-opencv
+```
 
 ### Raspberry Pi 4
 
