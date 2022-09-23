@@ -58,6 +58,35 @@ Save and exit. Modify cmdline.txt:
 sudo nano /boot/cmdline.txt
 ```
 
+Scroll to the end of the line. Add a space and append the following:
+
+```
+modules-load=dwc2,g_ether
+```
+
+Save and exit. Shutdown
+
+```
+sudo shutdown now
+```
+
+Remove all USB cables. Connect a micro USB cable from the OTG port to the Raspberry Pi 4.
+
+Log back into the Pi Zero (e.g. SSH). Create a static ethernet IP address by modifying the dhcpd.conf file:
+
+```
+sudo nano /etc/dhcpcd.conf
+```
+
+Add the following. Change `x` to the desired number for your Pi Zero (leave 1 for the Pi 4, so you should use 2+ for `x`).
+
+```
+# Assign static IP address to USB ethernet gadget--change x!
+interface usb0
+static ip_address=192.168.7.x/24
+static routers=192.168.7.1
+static domain_name_servers=192.168.7.1
+```
 
 
 
