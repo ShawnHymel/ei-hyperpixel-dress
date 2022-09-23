@@ -5,7 +5,7 @@ Run this on the Pi Zeros
 import socket
 
 # Settings
-HOST = '127.0.0.1'
+HOST = '192.168.7.1'            # Address of the server (Pi 4)
 PORT = 8484
 KEEPALIVE = "ACK"
 SOCKET_TIMEOUT = 3.0            # Wait this no. of seconds before closing socket
@@ -38,6 +38,9 @@ def main():
                 client_socket.sendall(bytes(KEEPALIVE, 'UTF-8'))
             except socket.timeout as e:
                 print("Socket timeout:", str(e))
+                connected = False
+            except socket.error as e:
+                print("Socket error:", str(e))
                 connected = False
 
     client_socket.close()
