@@ -2,149 +2,7 @@
 
 ## Setup Notes
 
-### Raspberry Pi Zero W
-
-#### Hardware
-
-* Connect Pi Camera to Raspberry Pi 4
-* Connect HyperPixel to Raspberry pi 4
-
-#### Operating System Setup
-
-* Download the [Raspberry Pi Image](https://www.raspberrypi.com/software/)
-* Burn Raspberri Pi OS Lite (Legacy) (Buster) to a micro SD card
-* Connect keyboard, mouse, and monitor (e.g. HDMI)
-  * Adjust *boot/config.txt* as needed to support your monitor
-  * Note: if you do not have a keyboard, mouse, and monitor, you can do an [Ethernet headless setup](https://nrsyed.com/2021/06/02/raspberry-pi-headless-setup-via-ethernet-and-how-to-share-the-host-pcs-internet-connection/)
-* Login with default username (pi) and password (raspberry)
-* Run config:
-
-```
-sudo raspi-config
-```
-
-* Configure the following:
-  * Connect to WiFi (can disable WiFi after we install everything)
-  * Change password (recommended)
-  * Enable camera interface (if using Pi Cam)
-  * Enable SSH
-  * Enable I2C
-  * Localization: 
-    * Remove en_GB.UTF-8 and add en_US.UTF-8
-    * Set default to en_US.UTF-8
-  * Set timezone
-  * Set keyboard to Generic 105-key, English (US)
-  * Set Wireless LAN country to US
-  * Save and reboot
-
-#### Enable USB Ethernet Gadget
-
-Modify config.txt:
-
-```
-sudo nano /boot/config.txt
-```
-
-Add the following at the bottom:
-
-```
-# Enable USB gadget
-dtoverlay=dwc2
-```
-
-Save and exit. Modify cmdline.txt:
-
-```
-sudo nano /boot/cmdline.txt
-```
-
-Scroll to the end of the line. Add a space and append the following:
-
-```
-modules-load=dwc2,g_ether
-```
-
-Save and exit. Shutdown
-
-```
-sudo shutdown now
-```
-
-Remove all USB cables. Connect a micro USB cable from the OTG port to the Raspberry Pi 4.
-
-Log back into the Pi Zero (e.g. SSH). Create a static ethernet IP address by modifying the dhcpd.conf file:
-
-```
-sudo nano /etc/dhcpcd.conf
-```
-
-Add the following. Change `x` to the desired number for your Pi Zero (leave 1 for the Pi 4, so you should use 2+ for `x`).
-
-```
-# Assign static IP address to USB ethernet gadget--change x!
-interface usb0
-static ip_address=192.168.7.x/24
-static routers=192.168.7.1
-static domain_name_servers=192.168.7.1
-```
-
-#### Install OpenCV
-
-Install some dependencies:
-
-```
-sudo apt install -y libatlas-base-dev libhdf5-dev libatlas-base-dev libjasper-dev libqtgui4 libqt4-test
-```
-
-Run the following:
-
-```
-sudo apt update
-sudo apt install -y python-opencv
-sudo python3 -m pip install opencv-python
-```
-
-I'm sure there's a way to do this without having to install OpenCV twice. I'm not in the mood right now to figure out how.
-
-#### Install HyperPixel
-
-TODO
-
-Define the following in */boot/config.txt*:
-
-```
-dtoverlay=hyperpixel2r:disable-touch
-enable_dpi_lcd=1
-dpi_group=2
-dpi_mode=87
-dpi_output_format=0x7f216
-dpi_timings=480 0 10 16 55 480 0 15 60 15 0 0 0 60 0 19200000 6
-
-# Define framebuffer size for HyperPixel2r
-framebuffer_width=480
-framebuffer_height=480
-```
-
-
-#### Image Test
-
-Download an image:
-
-```
-cd ~/Projects/HyperPixel/
-wget https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Test.svg/620px-Test.svg.png
-mv 620px-Test.svg.png image.png
-```
-
-
-
-
 ### Raspberry Pi 4
-
-#### Hardware
-
-* Connect Pi Camera to Raspberry Pi 4
-* Connect HyperPixel to Raspberry pi 4
 
 #### Operating System Setup
 
@@ -182,72 +40,6 @@ Install dependencies:
 sudo apt update
 sudo apt install -y mc git python3-pip libsdl2-ttf-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 i2c-tools
 ```
-
-#### Install HyperPixel 2" Round drivers
-
-Install display driver:
-
-```
-mkdir -p ~/Projects/GitHub
-cd ~/Projects/GitHub
-git clone https://github.com/pimoroni/hyperpixel2r
-cd hyperpixel2r
-sudo ./install.sh
-```
-
-Disable the default touch driver for the HyperPixel
-
-```
-sudo nano /boot/config.txt
-```
-
-Scroll down and change the dtoverlay line to the following:
-
-```
-dtoverlay=hyperpixel2r:disable-touch
-```
-
-At the bottom, add the following:
-
-```
-# Force 640x480 video for Pygame / HyperPixel2r
-hdmi_force_hotplug=1
-hdmi_mode=1
-hdmi_group=1
-```
-
-Save and exit. Shut down:
-
-```
-sudo shutdown now
-```
-
-Unplug your primary monitor! It will no longer work (and a DSI monitor might interfere with the HyperPixel). Turn your Pi back on.
-
-Upgrade pip and install Python packages:
-
-```
-python3 -m pip install --upgrade pip
-sudo python3 -m pip install hyperpixel2r pygame
-```
-
-#### Test HyperPixel
-
-Create a place to store the tests:
-
-```
-mkdir -p ~/Projects/HyperPixel
-cd ~/Projects/HyperPixel
-nano pygame-display-test.py
-```
-
-Copy the code from *tests/pygame-display-test.py* into *~/Projects/HyperPixel/pygame-display-test.py*. Run it with:
-
-```
-sudo python3 pygame-display-test.py
-```
-
-You should see "PyGame Draw Test" printed on the screen.
 
 #### Edge Impulse Setup
 
@@ -309,3 +101,296 @@ Run the test with:
 sudo python3 ei-face-static-test.py mobilenet-ssd-face.eim static-features.txt
 ```
 
+#### Configure to Run Server on Boot
+
+Create a static ethernet IP address by modifying the dhcpd.conf file:
+
+```
+sudo nano /etc/dhcpcd.conf
+```
+
+Add the following:
+
+```
+# Assign static IP address to USB ethernet
+interface usb0
+static ip_address=192.168.7.1/24
+static routers=192.168.7.1
+static domain_name_servers=192.168.7.1
+```
+
+Copy the contents of *server-ssd.py* to *~/Projects/HyperPixel/server-ssd.py*.
+
+Test it by running the following while the server is running:
+
+```
+sudo python3 server-ssd.py
+```
+
+Exit by pressing *ctrl + c*.
+
+Create a new systemd service file:
+
+```
+sudo nano /lib/systemd/system/facedress-server.service
+```
+
+Enter the following:
+
+```
+[Unit]
+Description=Server that performs face detection and sends images to clients
+After=multi-user.target network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/Projects/HyperPixel/server-ssd.py
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save and exit. Reload the service file, and tell Linux to run it on boot:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable facedress-server.service
+```
+
+Reboot:
+
+```
+sudo reboot
+```
+
+Some commands to help troubleshoot the systemd service:
+
+```
+systemctl status facedress-server.service
+sudo systemctl stop facedress-server.service
+sudo systemctl start facedress-server.service
+```
+
+### Raspberry Pi Zero W
+
+#### Operating System Setup
+
+* Download the [Raspberry Pi Image](https://www.raspberrypi.com/software/)
+* Burn Raspberri Pi OS Lite (Legacy) (Buster) to a micro SD card
+* Connect keyboard, mouse, and monitor (e.g. HDMI)
+  * Adjust *boot/config.txt* as needed to support your monitor
+  * Note: if you do not have a keyboard, mouse, and monitor, you can do an [Ethernet headless setup](https://nrsyed.com/2021/06/02/raspberry-pi-headless-setup-via-ethernet-and-how-to-share-the-host-pcs-internet-connection/)
+* Login with default username (pi) and password (raspberry)
+* Run config:
+
+```
+sudo raspi-config
+```
+
+* Configure the following:
+  * Connect to WiFi (can disable WiFi after we install everything)
+  * Change password (recommended)
+  * Enable SSH
+  * Enable I2C
+  * Localization: 
+    * Remove en_GB.UTF-8 and add en_US.UTF-8
+    * Set default to en_US.UTF-8
+  * Set timezone
+  * Set keyboard to Generic 105-key, English (US)
+  * Set Wireless LAN country to US
+  * Save and reboot
+
+#### Enable USB Ethernet Gadget
+
+Modify config.txt:
+
+```
+sudo nano /boot/config.txt
+```
+
+Add the following at the bottom:
+
+```
+# Enable USB gadget
+dtoverlay=dwc2
+```
+
+Save and exit. Modify cmdline.txt:
+
+```
+sudo nano /boot/cmdline.txt
+```
+
+Scroll to the end of the line. Add a space and append the following:
+
+```
+modules-load=dwc2,g_ether
+```
+
+Save and exit. Create a static ethernet IP address by modifying the dhcpd.conf file:
+
+```
+sudo nano /etc/dhcpcd.conf
+```
+
+Add the following. Change `x` to the desired number for your Pi Zero (leave 1 for the Pi 4, so you should use 2+ for `x`).
+
+```
+# Assign static IP address to USB ethernet gadget--change x!
+interface usb0
+static ip_address=192.168.7.x/24
+static routers=192.168.7.1
+static domain_name_servers=192.168.7.1
+```
+
+Save and exit. Shutdown:
+
+```
+sudo shutdown now
+```
+
+Remove all USB cables. Connect a micro USB cable from the OTG port to the Raspberry Pi 4.
+
+**NOTE:** Only the USB 3.0 (blue) ports on the Pi 4 seem to be working to provide a network connection at this time.
+
+You should be able to SSH into the Pi Zero from the Pi 4 (where `x` is the x you chose earlier):
+
+```
+ssh -p 22 pi@192.168.7.x
+```
+
+#### Install OpenCV
+
+Install some dependencies:
+
+```
+sudo apt update
+sudo apt install -y libatlas-base-dev libhdf5-dev libatlas-base-dev libjasper-dev libqtgui4 libqt4-test python3-pip
+```
+
+Run the following:
+
+```
+sudo python3 -m pip install opencv-python
+```
+
+This will take a while...like an hour or two. So, be patient.
+
+#### Install HyperPixel 2" Round drivers
+
+Install display driver:
+
+```
+mkdir -p ~/Projects/GitHub
+cd ~/Projects/GitHub
+git clone https://github.com/pimoroni/hyperpixel2r
+cd hyperpixel2r
+sudo ./install.sh
+```
+
+Disable the default touch driver for the HyperPixel
+
+```
+sudo nano /boot/config.txt
+```
+
+Scroll down and change the HyperPixel dtoverlay line to the following:
+
+```
+dtoverlay=hyperpixel2r:disable-touch
+```
+
+At the bottom, add the following:
+
+```
+# Define framebuffer size for HyperPixel2r
+framebuffer_width=480
+framebuffer_height=480
+
+# Force 640x480 video for Pygame / HyperPixel2r
+hdmi_force_hotplug=1
+hdmi_mode=1
+hdmi_group=1
+```
+
+Save and exit. Shut down:
+
+```
+sudo shutdown now
+```
+
+Unplug your primary monitor! It will no longer work (and a DSI monitor might interfere with the HyperPixel). Turn your Pi back on.
+
+Upgrade pip and install Python packages:
+
+```
+python3 -m pip install --upgrade pip
+sudo python3 -m pip install hyperpixel2r pygame
+```
+
+#### Test HyperPixel with Static Image
+
+Download an image:
+
+```
+cd ~/Projects/HyperPixel/
+wget https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Test.svg/620px-Test.svg.png -O image.png
+```
+
+Copy *img-display-test.py* to the *HyperPixel* folder. Run it with:
+
+```
+sudo python3 img-display-test.py
+```
+
+You should see a test pattern appear on the HyperPixel screen. It's OK if it's a little stretched.
+
+#### Configure to Run Client on Boot
+
+Copy the contents of *client.py* to *~/Projects/HyperPixel/client.py*.
+
+Test it by running the following while the server is running:
+
+```
+sudo python3 client.py
+```
+
+Create a new systemd service file:
+
+```
+sudo nano /lib/systemd/system/facedress-client.service
+```
+
+Enter the following:
+
+```
+[Unit]
+Description=Client to display images received over USB ethernet
+After=multi-user.target network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/Projects/HyperPixel/client.py
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save and exit. Reload the service file, and tell Linux to run it on boot:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable facedress-client.service
+```
+
+Reboot:
+
+```
+sudo reboot
+```
+
+Some commands to help troubleshoot the systemd service:
+
+```
+systemctl status facedress-client.service
+sudo systemctl stop facedress-client.service
+sudo systemctl start facedress-client.service
+```

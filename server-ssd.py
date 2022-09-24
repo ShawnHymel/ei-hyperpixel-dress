@@ -10,13 +10,22 @@ Date: September 23, 2022
 License: Apache-2.0
 """
 
-import os, socket, threading, time, queue, random
+import os, socket, threading, time, queue, random, pickle, struct
+
+import cv2
+from picamera import PiCamera
+from picamera.array import PiRGBArray
+from edge_impulse_linux.image import ImageImpulseRunner
+
+# Debug setting
+DEBUG = True                            # Prints debugging info to console
 
 # Face detection settings
 model_file = "mobilenet-ssd-face.eim"   # Trained ML model from Edge Impulse
 draw_frames = True                      # Show frame and bounding boxes
 capture_res = (1088, 1088)              # Resolution captured by the camera
 resize_res = (320, 320)                 # Resolution expected by model
+default_sub_res = (240, 240)            # Default sub-image size (center of img)
 rotation = 90                           # Camera rotation (0, 90, 180, or 270)
 threshold = 0.4                         # Prediction value must be over this
 box_increase = 0.2                      # % to add to the size of the box
@@ -24,8 +33,8 @@ num_faces = 1                           # Number of faces to capture
 
 # Network settings
 HOST = '192.168.7.1'            # Address of the server (Pi 4)
-PORT = 8484
-KEEPALIVE = "ACK"
+PORT = 8484                     # Port of server (Pi 4)
+KEEPALIVE = "ACK"               # Keep alive message to send to server
 SOCKET_TIMEOUT = 3.0            # Wait this no. of seconds before closing socket
 
 # Global client list and mutex
@@ -54,7 +63,8 @@ class ListeningThread(threading.Thread):
             server_socket.bind((self.host, self.port))
         except socket.error as e:
             print("ERROR:", str(e))
-        print("Socket is listening...")
+        if DEBUG:
+            print("Socket is listening...")
 
         # Start listening on socket
         server_socket.listen(10)
@@ -64,7 +74,8 @@ class ListeningThread(threading.Thread):
         while running:
             client_socket, client_address = server_socket.accept()
             client_full_address = str(client_address[0]) + ":" + str(client_address[1])
-            print("Connected to: " + client_full_address)
+            if DEBUG:
+                print("Connected to: " + client_full_address)
             client_thread = ClientThread(client_address, client_socket)
             client_thread.start()
 
@@ -89,9 +100,10 @@ class ClientThread(threading.Thread):
         while running:
             
             # Send message to client
-            msg = str(self.q.get())
-            num_sent = self.client_socket.send(bytes(msg, 'UTF-8'))
-            print("Wrote " + str(num_sent) + " bytes to: " + str(self.client_address))
+            data = self.q.get()
+            num_sent = self.client_socket.sendall(data)
+            if DEBUG:
+                print("Sent data to: " + str(self.client_address))
 
             # Wait for keepalive message response
             self.client_socket.settimeout(SOCKET_TIMEOUT)
@@ -99,7 +111,8 @@ class ClientThread(threading.Thread):
             try: 
                 data = self.client_socket.recv(1024)
                 msg = data.decode()
-                print("From client:", data.decode())
+                if DEBUG:
+                    print("From client:", data.decode())
             except socket.timeout as e:
                 print("Socket timeout:", str(e))
             except socket.error as e:
@@ -111,7 +124,8 @@ class ClientThread(threading.Thread):
 
         # Close socket
         self.client_socket.close()
-        print("Client " + str(self.client_address) + " disconnected")
+        if DEBUG:
+            print("Client " + str(self.client_address) + " disconnected")
 
         # Remove self from list
         clients_mutex.acquire()
@@ -119,8 +133,8 @@ class ClientThread(threading.Thread):
         clients_mutex.release()
 
     # Add message to queue
-    def send(self, msg):
-        self.q.put(msg)
+    def send(self, data):
+        self.q.put(data)
 
 #-------------------------------------------------------------------------------
 # Main
@@ -138,8 +152,9 @@ def main():
     # Initialize model (and print information if it loads)
     try:
         model_info = runner.init()
-        print("Model name:", model_info['project']['name'])
-        print("Model owner:", model_info['project']['owner'])
+        if DEBUG:
+            print("Model name:", model_info['project']['name'])
+            print("Model owner:", model_info['project']['owner'])
         
     # Exit if we cannot initialize the model
     except Exception as e:
@@ -223,20 +238,13 @@ def main():
             
             # Sort bounding boxes based on areas (largest first)
             bboxes = sorted(bboxes, reverse=True)
-            print("Boxes:", bboxes)
+            if DEBUG:
+                print("Boxes:", bboxes)
 
             # Create face sub-images (taken from original image)
             face_imgs = []
             face_counter = 0
             for bbox in bboxes:
-
-                # Draw bounding box over detected object (using the resized image)
-                if draw_frames:
-                    cv2.rectangle(img_resized,
-                                    (bbox[1], bbox[2]),
-                                    (bbox[3], bbox[4]),
-                                    (255, 255, 255),
-                                    1)
 
                 # Scale bounding box dimensions to full image
                 x0 = int((bbox[1] / resize_res[0]) * capture_res[0])
@@ -252,9 +260,33 @@ def main():
                 if (face_counter >= len(clients)):
                     break
 
-            # Send 
-            for i, clients in enumerate(clients):
-                # TODO: Write face images out to clients
+            # Compress and send image data to clients
+            for i, client in enumerate(clients):
+
+                # Send sub-image in bounding box or default to center of image
+                if i < len(bboxes):
+                    sub_img = face_imgs[i]
+                else:
+                    center_x = capture_res[0] / 2
+                    center_y = capture_res[1] / 2
+                    x0 = int(center_x - (default_sub_res[0] / 2))
+                    y0 = int(center_y - (default_sub_res[1] / 2))
+                    x1 = int(center_x + (default_sub_res[0] / 2))
+                    y1 = int(center_y + (default_sub_res[1] / 2))
+                    sub_img = img_rgb[x0:x1, y0:y1]
+                
+                # Transmit sub-image to connected client
+                try:
+                    _, img_jpg = cv2.imencode('.jpg', sub_img)
+                    data = pickle.dumps(img_jpg, 0)
+                    size = len(data)
+                    client.send(struct.pack(">L", size) + data)
+                    if DEBUG:
+                        print("Sending image of size " + str(sub_img.shape) + \
+                                " to " + str(client.client_address))
+                except Exception as e:
+                    print("Error:", str(e))
+                    continue
             
             # Clear the stream to prepare for next frame
             raw_capture.truncate(0)
@@ -262,7 +294,8 @@ def main():
             # Calculate framrate
             frame_time = (cv2.getTickCount() - timestamp) / cv2.getTickFrequency()
             fps = 1 / frame_time
-            print("FPS:", fps)
+            if DEBUG:
+                print("FPS:", fps)
             
             # Press 'q' to quit
             if cv2.waitKey(1) == ord('q'):
