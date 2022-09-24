@@ -90,12 +90,54 @@ static domain_name_servers=192.168.7.1
 
 #### Install OpenCV
 
+Install some dependencies:
+
+```
+sudo apt install -y libatlas-base-dev libhdf5-dev libatlas-base-dev libjasper-dev libqtgui4 libqt4-test
+```
+
 Run the following:
 
 ```
 sudo apt update
 sudo apt install -y python-opencv
+sudo python3 -m pip install opencv-python
 ```
+
+I'm sure there's a way to do this without having to install OpenCV twice. I'm not in the mood right now to figure out how.
+
+#### Install HyperPixel
+
+TODO
+
+Define the following in */boot/config.txt*:
+
+```
+dtoverlay=hyperpixel2r:disable-touch
+enable_dpi_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=0x7f216
+dpi_timings=480 0 10 16 55 480 0 15 60 15 0 0 0 60 0 19200000 6
+
+# Define framebuffer size for HyperPixel2r
+framebuffer_width=480
+framebuffer_height=480
+```
+
+
+#### Image Test
+
+Download an image:
+
+```
+cd ~/Projects/HyperPixel/
+wget https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Test.svg/620px-Test.svg.png
+mv 620px-Test.svg.png image.png
+```
+
+
+
 
 ### Raspberry Pi 4
 

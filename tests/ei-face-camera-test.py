@@ -1,4 +1,6 @@
 """
+Run on Pi 4 connected to a monitor (not HyperPixel).
+
 https://github.com/edgeimpulse/linux-sdk-python/blob/master/examples/image/classify.py
 
 License: Apache-2.0
@@ -12,10 +14,12 @@ from edge_impulse_linux.image import ImageImpulseRunner
 
 # Settings
 model_file = "mobilenet-ssd-face.eim"   # Trained ML model from Edge Impulse
+draw_frames = True                      # Show frame and bounding boxes
 capture_res = (1088, 1088)              # Resolution captured by the camera
 resize_res = (320, 320)                 # Resolution expected by model
 rotation = 90                            # Camera rotation (0, 90, 180, or 270)
 threshold = 0.4                         # Prediction value must be over this
+box_increase = 0.2                      # % to add to the size of the box
 num_faces = 1                           # Number of faces to capture
 
 # The ImpulseRunner module will attempt to load files relative to its location,
@@ -82,41 +86,72 @@ with PiCamera() as camera:
         # Display predictions and timing data
         # print("Output:", res)
         
-        # Go through each of the returned bounding boxes
+        # Redefine the bounding box: make it bigger and make it square
         bboxes = []
         for bbox in res['result']['bounding_boxes']:
             if bbox['value'] >= threshold:
-                bboxes.append((bbox['width'] * bbox['height'], 
-                                bbox['x'],
-                                bbox['y'],
-                                bbox['width'],
-                                bbox['height']))
+
+                # Calculate center of bounding box
+                center_x = int(bbox['x'] + (bbox['width'] / 2))
+                center_y = int(bbox['y'] + (bbox['height'] / 2))
+
+                # Find biggest dimension, make it bigger
+                new_wh = max(bbox['width'], bbox['height']) * (1 + box_increase)
+                new_wh = int(new_wh)
+
+                # Clamp new dimensions
+                new_x0 = int(max(center_x - (new_wh / 2), 0))
+                new_y0 = int(max(center_y - (new_wh / 2), 0))
+                new_x1 = int(min(new_x0 + new_wh, resize_res[0]))
+                new_y1 = int(min(new_y0 + new_wh, resize_res[1]))
+
+                # Append the new dimensions
+                bboxes.append((new_wh ** 2, 
+                                new_x0,
+                                new_y0,
+                                new_x1,
+                                new_y1))
         
         # Sort bounding boxes based on areas (largest first)
         bboxes = sorted(bboxes, reverse=True)
         print("Boxes:", bboxes)
 
-        # Create face images (taken from original image)
+        # Create face sub-images (taken from original image)
         face_imgs = []
         face_counter = 0
         for bbox in bboxes:
 
-            # Scale x, y, width, and height
-            x = int(bbox[1] * capture_res[0] / resize_res[0])
-            y = int(bbox[2] * capture_res[1] / resize_res[1])
-            w = int(bbox[3] * capture_res[0] / resize_res[0])
-            h = int(bbox[4] * capture_res[1] / resize_res[1])
+            # Draw bounding box over detected object (using the resized image)
+            if draw_frames:
+                cv2.rectangle(img_resized,
+                                (bbox[1], bbox[2]),
+                                (bbox[3], bbox[4]),
+                                (255, 255, 255),
+                                1)
+
+            # Scale bounding box dimensions to full image
+            x0 = int((bbox[1] / resize_res[0]) * capture_res[0])
+            y0 = int((bbox[2] / resize_res[1]) * capture_res[1])
+            x1 = int((bbox[3] / resize_res[0]) * capture_res[0])
+            y1 = int((bbox[4] / resize_res[1]) * capture_res[1])
 
             # Take sub-image
-            face_imgs.append(img_rgb[x:(x + w), y:(y + h)])
+            face_imgs.append(img_rgb[x0:x1, y0:y1])
 
             # Only create a limited number of face sub-images
             face_counter += 1
             if (face_counter >= num_faces):
                 break
 
-        # if len(face_imgs) > 0:
-        #     cv2.imwrite("test.jpg", face_imgs[0])
+        # Test: draw frames to screen
+        if draw_frames:
+            img_bgr = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
+            cv2.imshow("Frame", img_bgr)
+
+        # Test: save sub-image of largest face
+        for i, face_img in enumerate(face_imgs):
+            img_bgr = cv2.cvtColor(face_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite("test." + str(i) + ".jpg", img_bgr)
         
         # Clear the stream to prepare for next frame
         raw_capture.truncate(0)
