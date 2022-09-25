@@ -4,6 +4,12 @@
 
 [Multiple Pi Zeros connected to a single Pi host guide](http://raspberryjamberlin.de/zero360-part-2-connecting-via-otg-a-cluster-of-raspberry-pi-zeros-to-a-pi-3/)
 
+For some reason, the USB network interfaces do not come up immediately on the Pi4 (it could be a power issue?). So, there's a specific order in which you need to plug everything in after setup:
+
+1. Plug in Pi 4 and wait a couple of minutes
+2. Plug in a single Pi Zero and wait until it starts showing stuff on the screen
+3. Plug in the second Pi Zero and wait until it shows more stuff
+
 ### Raspberry Pi 4
 
 #### Operating System Setup
