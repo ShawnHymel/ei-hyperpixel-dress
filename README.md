@@ -2,6 +2,8 @@
 
 ## Setup Notes
 
+[Multiple Pi Zeros connected to a single Pi host guide](http://raspberryjamberlin.de/zero360-part-2-connecting-via-otg-a-cluster-of-raspberry-pi-zeros-to-a-pi-3/)
+
 ### Raspberry Pi 4
 
 #### Operating System Setup
@@ -38,7 +40,7 @@ Install dependencies:
 
 ```
 sudo apt update
-sudo apt install -y mc git python3-pip libsdl2-ttf-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 i2c-tools
+sudo apt install -y mc git python3-pip
 ```
 
 #### Edge Impulse Setup
@@ -79,14 +81,14 @@ Install CLI tools:
 npm config set user root && sudo npm install edge-impulse-linux -g --unsafe-perm
 ```
 
-#### Test face detection with static inference
-
 Download model file. Sign in with your Edge Impulse credentials when prompted. Select the **MobileNet-SSD: Face Detection 320x320 RGB** project.
 
 ```
 cd ~/Projects/HyperPixel/
 sudo edge-impulse-linux-runner --clean --download mobilenet-ssd-face.eim
 ```
+
+#### Test face detection with static inference
 
 Copy *tests/ei-face-static-test.py* and *tests/static-features.txt* to the *~/Projects/HyperPixel/* directory:
 
@@ -101,7 +103,21 @@ Run the test with:
 sudo python3 ei-face-static-test.py mobilenet-ssd-face.eim static-features.txt
 ```
 
-#### Configure to Run Server on Boot
+#### Configure Network
+
+Create a udev rule:
+
+```
+sudo nano /etc/udev/rules.d/90-pi0network.rules
+```
+
+Add the following (one line for each Pi Zero expected to be connected):
+
+```
+SUBSYSTEM=="net", ATTR{address}=="00:22:82:ff:ff:02", NAME="usbpi2"
+SUBSYSTEM=="net", ATTR{address}=="00:22:82:ff:ff:03", NAME="usbpi3"
+```
+
 
 Create a static ethernet IP address by modifying the dhcpd.conf file:
 
@@ -112,12 +128,15 @@ sudo nano /etc/dhcpcd.conf
 Add the following:
 
 ```
-# Assign static IP address to USB ethernet
-interface usb0
-static ip_address=192.168.7.1/24
-static routers=192.168.7.1
-static domain_name_servers=192.168.7.1
+# Assign static IP addresses for the USB connected Pi Zeros
+interface usbpi2
+static ip_address=192.168.2.1/24
+
+interface usbpi3
+static ip_address=192.168.3.1/24
 ```
+
+#### Configure to Run Server on Boot
 
 Copy the contents of *server-ssd.py* to *~/Projects/HyperPixel/server-ssd.py*.
 
@@ -186,9 +205,12 @@ sudo systemctl start facedress-server.service
 sudo raspi-config
 ```
 
+Pick a value for `x` (must be 2 or higher). Use this value wherever you see `x`.
+
 * Configure the following:
   * Connect to WiFi (can disable WiFi after we install everything)
   * Change password (recommended)
+  * Change hostname (to something like `pi0-x` where `x` is 2, 3, etc.; must be unique from other Pis on the network)
   * Enable SSH
   * Enable I2C
   * Localization: 
@@ -220,10 +242,10 @@ Save and exit. Modify cmdline.txt:
 sudo nano /boot/cmdline.txt
 ```
 
-Scroll to the end of the line. Add a space and append the following:
+Scroll to the end of the line. Add a space and append the following (change the 'x' to match your Pi Zero number!):
 
 ```
-modules-load=dwc2,g_ether
+modules-load=dwc2,g_ether g_ether.host_addr=00:22:82:ff:ff:0x g_ether.dev_addr=00:22:82:ff:ff:1x
 ```
 
 Save and exit. Create a static ethernet IP address by modifying the dhcpd.conf file:
@@ -237,9 +259,7 @@ Add the following. Change `x` to the desired number for your Pi Zero (leave 1 fo
 ```
 # Assign static IP address to USB ethernet gadget--change x!
 interface usb0
-static ip_address=192.168.7.x/24
-static routers=192.168.7.1
-static domain_name_servers=192.168.7.1
+static ip_address=192.168.x.2/24
 ```
 
 Save and exit. Shutdown:
@@ -264,7 +284,7 @@ Install some dependencies:
 
 ```
 sudo apt update
-sudo apt install -y libatlas-base-dev libhdf5-dev libatlas-base-dev libjasper-dev libqtgui4 libqt4-test python3-pip
+sudo apt install -y libatlas-base-dev libhdf5-dev libatlas-base-dev libjasper-dev libqtgui4 libqt4-test libsdl2-ttf-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 i2c-tools libopenjp2-7 git python3-pip python3-opencv
 ```
 
 Run the following:
@@ -329,14 +349,16 @@ sudo python3 -m pip install hyperpixel2r pygame
 
 #### Test HyperPixel with Static Image
 
-Download an image:
+Download an image and test script:
 
 ```
+mkdir -p ~/Projects/HyperPixel/
 cd ~/Projects/HyperPixel/
 wget https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Test.svg/620px-Test.svg.png -O image.png
+wget https://raw.githubusercontent.com/ShawnHymel/ei-hyperpixel-dress/main/tests/img-display-test.py
 ```
 
-Copy *img-display-test.py* to the *HyperPixel* folder. Run it with:
+Run it with:
 
 ```
 sudo python3 img-display-test.py

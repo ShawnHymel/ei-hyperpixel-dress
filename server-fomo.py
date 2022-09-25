@@ -5,6 +5,9 @@ Handles incoming client connections from the Pi Zeros. Takes images with
 attached Pi cam, performs face detection, and sends out the sub-images to each
 of the connected Pi Zeros.
 
+Uses FOMO, so it should be faster but less accurate. Download FOMO .eim file
+from Edge Impulse.
+
 NOTE: You must update the HOSTS setting to reflect the Pi Zero interfaces.
 
 Author: Shawn Hymel (Edge Impulse)
@@ -23,11 +26,12 @@ from edge_impulse_linux.image import ImageImpulseRunner
 DEBUG = True                            # Prints debugging info to console
 
 # Face detection settings
-model_file = "mobilenet-ssd-face.eim"   # Trained ML model from Edge Impulse
+model_file = "fomo-face.eim"            # Trained ML model from Edge Impulse
 draw_frames = True                      # Show frame and bounding boxes
 capture_res = (1088, 1088)              # Resolution captured by the camera
 resize_res = (320, 320)                 # Resolution expected by model
-default_sub_res = (240, 240)            # Default sub-image size (center of img)
+sub_res = (240, 240)                    # Sub-image size around detected face
+default_sub_res = (480, 480)            # Default sub-image size (center of img)
 rotation = 90                           # Camera rotation (0, 90, 180, or 270)
 threshold = 0.4                         # Prediction value must be over this
 box_increase = 0.2                      # % to add to the size of the box
@@ -169,7 +173,7 @@ def main():
     # Initial framerate value
     fps = 0
 
-    # Start listening thread
+    # Start listening threads
     for host in HOSTS:
         listening_thread = ListeningThread(host, PORT)
         listening_thread.start()
@@ -211,7 +215,7 @@ def main():
                 print("Exception:", e)
                 
             # Display predictions and timing data
-            # print("Output:", res)
+            print("Output:", res)
             
             # Redefine the bounding box: make it bigger and make it square
             bboxes = []
@@ -222,24 +226,20 @@ def main():
                     center_x = int(bbox['x'] + (bbox['width'] / 2))
                     center_y = int(bbox['y'] + (bbox['height'] / 2))
 
-                    # Find biggest dimension, make it bigger
-                    new_wh = max(bbox['width'], bbox['height']) * (1 + box_increase)
-                    new_wh = int(new_wh)
-
                     # Clamp new dimensions
-                    new_x0 = int(max(center_x - (new_wh / 2), 0))
-                    new_y0 = int(max(center_y - (new_wh / 2), 0))
-                    new_x1 = int(min(new_x0 + new_wh, resize_res[0]))
-                    new_y1 = int(min(new_y0 + new_wh, resize_res[1]))
+                    new_x0 = int(max(center_x - (sub_res[0] / 2), 0))
+                    new_y0 = int(max(center_y - (sub_res[1] / 2), 0))
+                    new_x1 = int(min(new_x0 - (sub_res[0] / 2), resize_res[0]))
+                    new_y1 = int(min(new_y0 - (sub_res[1] / 2), resize_res[1]))
 
-                    # Append the new dimensions
-                    bboxes.append((new_wh ** 2, 
+                    # Append the value and new dimensions
+                    bboxes.append((bbox['value'], 
                                     new_x0,
                                     new_y0,
                                     new_x1,
                                     new_y1))
             
-            # Sort bounding boxes based on areas (largest first)
+            # Sort bounding boxes based on values (highest first)
             bboxes = sorted(bboxes, reverse=True)
             if DEBUG:
                 print("Boxes:", bboxes)

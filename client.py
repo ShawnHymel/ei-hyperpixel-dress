@@ -5,6 +5,9 @@ Connects to Pi 4 server and waits for image data to be sent using sockets.
 Scales the image as needed to fit on the HyperPixel 2" Round display using
 PyGame.
 
+NOTE: You MUST change the host IP address to match the 'x' you chose for the Pi
+Zero!
+
 Author: Shawn Hymel (Edge Impulse)
 Date: September 24, 2022
 License: Apache-2.0
@@ -20,7 +23,7 @@ DEBUG = True                    # Prints debugging info to console
 MIRROR = True                   # Mirror the image on the HyperPixel
 ROTATION = 90                   # Rotate image (0, 90, 180, 270)
 DISPLAY_RES = (480, 480)        # Resolution of HyperPixel
-HOST = '192.168.7.1'            # Address of the server (Pi 4)
+HOST = '192.168.x.1'            # Address of the server (Pi 4 interface)
 PORT = 8484                     # Port of server (Pi 4)
 KEEPALIVE = "ACK"               # Keep alive message to send to server
 SOCKET_TIMEOUT = 3.0            # Wait this no. of seconds before closing socket

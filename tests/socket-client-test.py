@@ -5,7 +5,7 @@ Run this on the Pi Zeros
 import socket
 
 # Settings
-HOST = '192.168.7.1'            # Address of the server (Pi 4)
+HOST = '192.168.2.1'            # Address of the server (Pi 4)
 PORT = 8484
 KEEPALIVE = "ACK"
 SOCKET_TIMEOUT = 3.0            # Wait this no. of seconds before closing socket
