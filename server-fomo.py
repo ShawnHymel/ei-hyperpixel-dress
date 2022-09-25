@@ -62,17 +62,22 @@ class ListeningThread(threading.Thread):
     # Thread loop
     def run(self):
 
-        # Create socket for listening
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            server_socket.bind((self.host, self.port))
-        except socket.error as e:
-            print("ERROR:", str(e))
-        if DEBUG:
-            print("Socket is listening...")
+        # Create a socket for listening
+        bound = False
+        while not bound:
+            try:
+                server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                server_socket.bind((self.host, self.port))
+                bound = True
+            except socket.error as e:
+                print("ERROR:", str(e))
+                time.sleep(2.0)
+                bound = False
 
         # Start listening on socket
+        if DEBUG:
+            print("Socket is listening...")
         server_socket.listen(10)
 
         # Spin off new thread for each new connection

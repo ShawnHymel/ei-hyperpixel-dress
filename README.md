@@ -159,7 +159,7 @@ Enter the following:
 ```
 [Unit]
 Description=Server that performs face detection and sends images to clients
-After=multi-user.target network.target
+Requires=multi-user.target network-online.target
 
 [Service]
 ExecStart=/usr/bin/python3 /home/pi/Projects/HyperPixel/server-ssd.py
@@ -387,7 +387,7 @@ Enter the following:
 ```
 [Unit]
 Description=Client to display images received over USB ethernet
-After=multi-user.target network.target
+Requires=multi-user.target network-online.target
 
 [Service]
 ExecStart=/usr/bin/python3 /home/pi/Projects/HyperPixel/client.py
